@@ -10,6 +10,8 @@ import es.pedroredondo.sca.osv.OsvClient;
 import es.pedroredondo.sca.osv.OsvResponseParser;
 import es.pedroredondo.sca.parser.PomParser;
 import es.pedroredondo.sca.report.ReportGenerator;
+import es.pedroredondo.sca.report.SbomGenerator;
+import es.pedroredondo.sca.version.VersionChecker;
 
 public class Main {
 
@@ -19,31 +21,34 @@ public class Main {
 
         System.out.println("=== Dependency Scanner ===");
 
-        /*
-         * Comando --help
-         */
-        if (args.length > 0 && "--help".equalsIgnoreCase(args[0])) {
+        if (args.length > 0
+                && "--help".equalsIgnoreCase(args[0])) {
 
             System.out.println();
             System.out.println("Uso:");
-            System.out.println("  java -jar dependency-scanner-v2-0.0.1-SNAPSHOT.jar <ruta-pom>");
+            System.out.println(
+                    "  java -jar dependency-scanner-v2-0.0.1-SNAPSHOT.jar <ruta-pom>");
+
             System.out.println();
             System.out.println("Opciones:");
-            System.out.println("  --help       Muestra esta ayuda");
-            System.out.println("  --version    Muestra la version del programa");
+            System.out.println(
+                    "  --help       Muestra esta ayuda");
+            System.out.println(
+                    "  --version    Muestra la version del programa");
+
             System.out.println();
             System.out.println("Ejemplo:");
-            System.out.println("  java -jar dependency-scanner-v2-0.0.1-SNAPSHOT.jar C:\\proyecto\\pom.xml");
+            System.out.println(
+                    "  java -jar dependency-scanner-v2-0.0.1-SNAPSHOT.jar C:\\proyecto\\pom.xml");
 
             return;
         }
 
-        /*
-         * Comando --version
-         */
-        if (args.length > 0 && "--version".equalsIgnoreCase(args[0])) {
+        if (args.length > 0
+                && "--version".equalsIgnoreCase(args[0])) {
 
-            System.out.println("Dependency Scanner " + VERSION);
+            System.out.println(
+                    "Dependency Scanner " + VERSION);
 
             return;
         }
@@ -51,13 +56,6 @@ public class Main {
         String pomPath;
         Scanner scanner = null;
 
-        /*
-         * Si recibimos una ruta como argumento,
-         * usamos esa ruta directamente.
-         *
-         * Si no recibimos argumento,
-         * preguntamos por consola.
-         */
         if (args.length > 0) {
 
             pomPath = args[0];
@@ -95,11 +93,19 @@ public class Main {
             return;
         }
 
+        SbomGenerator sbomGenerator =
+                new SbomGenerator();
+
+        sbomGenerator.generate(dependencies);
+
         OsvClient osvClient =
                 new OsvClient();
 
         OsvResponseParser responseParser =
                 new OsvResponseParser();
+
+        VersionChecker versionChecker =
+                new VersionChecker();
 
         ReportGenerator reportGenerator =
                 new ReportGenerator();
@@ -110,6 +116,7 @@ public class Main {
         int ignoredTestDependencies = 0;
         int vulnerableDependencies = 0;
         int totalVulnerabilities = 0;
+        int outdatedDependencies = 0;
 
         for (Dependency dependency : dependencies) {
 
@@ -146,6 +153,37 @@ public class Main {
             }
 
             analyzedDependencies++;
+
+            String latestVersion =
+                    versionChecker.getLatestVersion(
+                            dependency);
+
+            if (latestVersion != null) {
+
+                System.out.println(
+                        "Ultima version disponible: "
+                        + latestVersion);
+
+                if (versionChecker.isOutdated(
+                        dependency,
+                        latestVersion)) {
+
+                    outdatedDependencies++;
+
+                    System.out.println(
+                            "Estado version: OBSOLETA");
+
+                } else {
+
+                    System.out.println(
+                            "Estado version: ACTUALIZADA");
+                }
+
+            } else {
+
+                System.out.println(
+                        "No se pudo comprobar la ultima version.");
+            }
 
             String osvResponse =
                     osvClient.queryVulnerabilities(
@@ -209,6 +247,10 @@ public class Main {
         System.out.println(
                 "Dependencias test ignoradas: "
                 + ignoredTestDependencies);
+
+        System.out.println(
+                "Dependencias obsoletas: "
+                + outdatedDependencies);
 
         System.out.println(
                 "Dependencias vulnerables: "
