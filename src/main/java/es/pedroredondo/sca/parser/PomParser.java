@@ -72,6 +72,32 @@ public class PomParser {
 
             document.getDocumentElement().normalize();
 
+            Element project =
+                    document.getDocumentElement();
+
+            // Comprobamos que realmente sea un POM Maven
+            if (!"project".equals(project.getNodeName())) {
+
+                System.out.println(
+                        "ERROR: El archivo no es un pom.xml valido de Maven.");
+
+                return dependencies;
+            }
+
+            String modelVersion =
+                    getDirectTagValue(
+                            project,
+                            "modelVersion");
+
+            if (modelVersion == null
+                    || !"4.0.0".equals(modelVersion)) {
+
+                System.out.println(
+                        "ERROR: El archivo no contiene un modelVersion Maven valido.");
+
+                return dependencies;
+            }
+
             Map<String, String> properties =
                     readProperties(document);
 
@@ -79,9 +105,6 @@ public class PomParser {
                     readDependencyManagement(
                             document,
                             properties);
-
-            Element project =
-                    document.getDocumentElement();
 
             NodeList projectChildren =
                     project.getChildNodes();
