@@ -1,0 +1,9 @@
+.classpath
+.project
+.settings/
+target/
+dependency-reduced-pom.xml
+security-report-*.txt
+*.class
+*.log
+security-report.txt
