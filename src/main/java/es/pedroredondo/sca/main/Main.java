@@ -13,9 +13,40 @@ import es.pedroredondo.sca.report.ReportGenerator;
 
 public class Main {
 
+    private static final String VERSION = "0.0.1";
+
     public static void main(String[] args) {
 
         System.out.println("=== Dependency Scanner ===");
+
+        /*
+         * Comando --help
+         */
+        if (args.length > 0 && "--help".equalsIgnoreCase(args[0])) {
+
+            System.out.println();
+            System.out.println("Uso:");
+            System.out.println("  java -jar dependency-scanner-v2-0.0.1-SNAPSHOT.jar <ruta-pom>");
+            System.out.println();
+            System.out.println("Opciones:");
+            System.out.println("  --help       Muestra esta ayuda");
+            System.out.println("  --version    Muestra la version del programa");
+            System.out.println();
+            System.out.println("Ejemplo:");
+            System.out.println("  java -jar dependency-scanner-v2-0.0.1-SNAPSHOT.jar C:\\proyecto\\pom.xml");
+
+            return;
+        }
+
+        /*
+         * Comando --version
+         */
+        if (args.length > 0 && "--version".equalsIgnoreCase(args[0])) {
+
+            System.out.println("Dependency Scanner " + VERSION);
+
+            return;
+        }
 
         String pomPath;
         Scanner scanner = null;

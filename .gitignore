@@ -1,9 +1,22 @@
+# Maven
+target/
+dependency-reduced-pom.xml
+
+# Eclipse
 .classpath
 .project
 .settings/
-target/
-dependency-reduced-pom.xml
+
+# Informes generados
 security-report-*.txt
-*.class
-*.log
 security-report.txt
+
+# Archivos compilados
+*.class
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
