@@ -1,11 +1,8 @@
 # Dependency Scanner
 
-Dependency Scanner es una herramienta SCA (Software Composition Analysis)
-desarrollada en Java para analizar las dependencias de proyectos Maven y
-detectar vulnerabilidades conocidas.
+Dependency Scanner es una herramienta SCA (Software Composition Analysis) desarrollada en Java para analizar las dependencias de proyectos Maven y detectar vulnerabilidades conocidas.
 
-El scanner analiza un archivo `pom.xml`, obtiene sus dependencias y consulta
-la base de datos de OSV para identificar vulnerabilidades de seguridad.
+El scanner analiza un archivo `pom.xml`, obtiene sus dependencias, consulta bases de datos públicas de vulnerabilidades y genera informes técnicos sobre seguridad, versiones y componentes utilizados.
 
 ## Características
 
@@ -20,7 +17,12 @@ la base de datos de OSV para identificar vulnerabilidades de seguridad.
 - Detección del `scope` de las dependencias
 - Exclusión de dependencias con `scope=test`
 - Protección del parser XML frente a XXE
-- Generación automática de informes
+- Validación básica de archivos POM
+- Generación automática de informes de seguridad
+- Generación automática de SBOM
+- Detección de dependencias obsoletas
+- Consulta de la última versión disponible
+- Recomendaciones de actualización
 - Informes con fecha y hora
 - Ejecución mediante JAR
 - Soporte para `--help`
@@ -32,6 +34,7 @@ la base de datos de OSV para identificar vulnerabilidades de seguridad.
 - Maven
 - Gson
 - OSV API
+- Maven Central
 - Eclipse
 
 ## Ejemplo de análisis
@@ -42,6 +45,9 @@ la base de datos de OSV para identificar vulnerabilidades de seguridad.
 Dependencia: org.apache.commons:commons-lang3
 Version: 3.17.0
 Scope: compile
+
+Ultima version disponible: 3.20.0
+Estado version: OBSOLETA
 
 Vulnerabilidad: CVE-2025-48924
 ID OSV/GHSA: GHSA-j288-q9x7-2f5v

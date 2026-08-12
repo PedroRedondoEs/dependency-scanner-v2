@@ -2,8 +2,6 @@ package es.pedroredondo.sca.report;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 import es.pedroredondo.sca.model.Dependency;
@@ -19,9 +17,9 @@ public class ReportGenerator {
         try {
 
             String timestamp =
-                    new SimpleDateFormat(
+                    new java.text.SimpleDateFormat(
                             "yyyy-MM-dd-HHmmss")
-                            .format(new Date());
+                            .format(new java.util.Date());
 
             reportFileName =
                     "security-report-"
@@ -29,18 +27,10 @@ public class ReportGenerator {
                     + ".txt";
 
             writer =
-                    new FileWriter(
-                            reportFileName);
+                    new FileWriter(reportFileName);
 
             writer.write(
-                    "=== DEPENDENCY SCANNER - SECURITY REPORT ===\n");
-
-            writer.write(
-                    "Fecha: "
-                    + new SimpleDateFormat(
-                            "dd/MM/yyyy HH:mm:ss")
-                            .format(new Date())
-                    + "\n\n");
+                    "=== DEPENDENCY SCANNER - SECURITY REPORT ===\n\n");
 
         } catch (IOException e) {
 
@@ -52,7 +42,9 @@ public class ReportGenerator {
 
     public void addDependency(
             Dependency dependency,
-            List<Vulnerability> vulnerabilities) {
+            List<Vulnerability> vulnerabilities,
+            String latestVersion,
+            boolean outdated) {
 
         try {
 
@@ -67,7 +59,7 @@ public class ReportGenerator {
                     + "\n");
 
             writer.write(
-                    "Version: "
+                    "Version actual: "
                     + dependency.getVersion()
                     + "\n");
 
@@ -85,15 +77,44 @@ public class ReportGenerator {
                 return;
             }
 
-            if (vulnerabilities.isEmpty()) {
+            if (latestVersion != null) {
 
                 writer.write(
-                        "Estado: SIN VULNERABILIDADES CONOCIDAS\n");
+                        "Ultima version disponible: "
+                        + latestVersion
+                        + "\n");
+
+                if (outdated) {
+
+                    writer.write(
+                            "Estado version: OBSOLETA\n");
+
+                    writer.write(
+                            "Recomendacion: actualizar a "
+                            + latestVersion
+                            + "\n");
+
+                } else {
+
+                    writer.write(
+                            "Estado version: ACTUALIZADA\n");
+                }
 
             } else {
 
                 writer.write(
-                        "Estado: VULNERABLE\n");
+                        "Estado version: NO COMPROBADA\n");
+            }
+
+            if (vulnerabilities.isEmpty()) {
+
+                writer.write(
+                        "Estado seguridad: SIN VULNERABILIDADES CONOCIDAS\n");
+
+            } else {
+
+                writer.write(
+                        "Estado seguridad: VULNERABLE\n");
 
                 for (Vulnerability vulnerability
                         : vulnerabilities) {
@@ -126,6 +147,17 @@ public class ReportGenerator {
                     "ERROR escribiendo el informe: "
                     + e.getMessage());
         }
+    }
+
+    public void addDependency(
+            Dependency dependency,
+            List<Vulnerability> vulnerabilities) {
+
+        addDependency(
+                dependency,
+                vulnerabilities,
+                null,
+                false);
     }
 
     public void finishReport(

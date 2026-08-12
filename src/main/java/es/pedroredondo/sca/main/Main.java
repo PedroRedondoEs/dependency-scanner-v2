@@ -158,15 +158,20 @@ public class Main {
                     versionChecker.getLatestVersion(
                             dependency);
 
+            boolean outdated = false;
+
             if (latestVersion != null) {
 
                 System.out.println(
                         "Ultima version disponible: "
                         + latestVersion);
 
-                if (versionChecker.isOutdated(
-                        dependency,
-                        latestVersion)) {
+                outdated =
+                        versionChecker.isOutdated(
+                                dependency,
+                                latestVersion);
+
+                if (outdated) {
 
                     outdatedDependencies++;
 
@@ -228,7 +233,9 @@ public class Main {
 
             reportGenerator.addDependency(
                     dependency,
-                    vulnerabilities);
+                    vulnerabilities,
+                    latestVersion,
+                    outdated);
         }
 
         System.out.println();
