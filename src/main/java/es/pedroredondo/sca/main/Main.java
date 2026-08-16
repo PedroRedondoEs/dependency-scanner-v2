@@ -54,7 +54,6 @@ public class Main {
         }
 
         String pomPath;
-        Scanner scanner = null;
 
         if (args.length > 0) {
 
@@ -67,12 +66,14 @@ public class Main {
 
         } else {
 
-            scanner = new Scanner(System.in);
+            try (Scanner scanner =
+                    new Scanner(System.in)) {
 
-            System.out.println(
-                    "Introduce la ruta del pom.xml:");
+                System.out.println(
+                        "Introduce la ruta del pom.xml:");
 
-            pomPath = scanner.nextLine();
+                pomPath = scanner.nextLine();
+            }
         }
 
         PomParser parser =
@@ -85,10 +86,6 @@ public class Main {
 
             System.out.println(
                     "No se encontraron dependencias para analizar.");
-
-            if (scanner != null) {
-                scanner.close();
-            }
 
             return;
         }
@@ -274,9 +271,5 @@ public class Main {
                 analyzedDependencies,
                 vulnerableDependencies,
                 totalVulnerabilities);
-
-        if (scanner != null) {
-            scanner.close();
-        }
     }
 }

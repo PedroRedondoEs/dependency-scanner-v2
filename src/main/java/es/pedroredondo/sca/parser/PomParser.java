@@ -21,62 +21,33 @@ public class PomParser {
 
     public List<Dependency> parsePom(String pomPath) {
 
-        List<Dependency> dependencies = new ArrayList<>();
+        List<Dependency> dependencies =
+                new ArrayList<>();
 
         try {
 
-            File pomFile = new File(pomPath);
+            File pomFile =
+                    new File(pomPath);
 
             if (!pomFile.exists()) {
-                System.out.println("ERROR: No existe el pom.xml:");
-                System.out.println(pomFile.getAbsolutePath());
+
+                System.out.println(
+                        "ERROR: No existe el pom.xml:");
+
+                System.out.println(
+                        pomFile.getAbsolutePath());
+
                 return dependencies;
             }
 
-            DocumentBuilderFactory factory =
-                    DocumentBuilderFactory.newInstance();
-
-            // Proteccion contra XXE
-            factory.setFeature(
-                    "http://apache.org/xml/features/disallow-doctype-decl",
-                    true);
-
-            factory.setFeature(
-                    "http://xml.org/sax/features/external-general-entities",
-                    false);
-
-            factory.setFeature(
-                    "http://xml.org/sax/features/external-parameter-entities",
-                    false);
-
-            factory.setFeature(
-                    "http://apache.org/xml/features/nonvalidating/load-external-dtd",
-                    false);
-
-            factory.setXIncludeAware(false);
-            factory.setExpandEntityReferences(false);
-
-            factory.setAttribute(
-                    XMLConstants.ACCESS_EXTERNAL_DTD,
-                    "");
-
-            factory.setAttribute(
-                    XMLConstants.ACCESS_EXTERNAL_SCHEMA,
-                    "");
-
-            DocumentBuilder builder =
-                    factory.newDocumentBuilder();
-
             Document document =
-                    builder.parse(pomFile);
-
-            document.getDocumentElement().normalize();
+                    readDocument(pomFile);
 
             Element project =
                     document.getDocumentElement();
 
-            // Comprobamos que realmente sea un POM Maven
-            if (!"project".equals(project.getNodeName())) {
+            if (!"project".equals(
+                    project.getNodeName())) {
 
                 System.out.println(
                         "ERROR: El archivo no es un pom.xml valido de Maven.");
@@ -99,36 +70,29 @@ public class PomParser {
             }
 
             Map<String, String> properties =
-                    readProperties(document);
+                    new HashMap<>();
 
             Map<String, String> managedVersions =
+                    new HashMap<>();
+
+            loadParentConfiguration(
+                    pomFile,
+                    document,
+                    properties,
+                    managedVersions);
+
+            properties.putAll(
+                    readProperties(document));
+
+            managedVersions.putAll(
                     readDependencyManagement(
                             document,
-                            properties);
+                            properties));
 
-            NodeList projectChildren =
-                    project.getChildNodes();
-
-            Element dependenciesElement = null;
-
-            for (int i = 0;
-                    i < projectChildren.getLength();
-                    i++) {
-
-                Node child =
-                        projectChildren.item(i);
-
-                if (child.getNodeType()
-                        == Node.ELEMENT_NODE
-                        && child.getNodeName()
-                                .equals("dependencies")) {
-
-                    dependenciesElement =
-                            (Element) child;
-
-                    break;
-                }
-            }
+            Element dependenciesElement =
+                    getDirectChild(
+                            project,
+                            "dependencies");
 
             if (dependenciesElement == null) {
 
@@ -139,7 +103,8 @@ public class PomParser {
             }
 
             NodeList dependencyNodes =
-                    dependenciesElement.getChildNodes();
+                    dependenciesElement
+                            .getChildNodes();
 
             int dependencyCount = 0;
 
@@ -152,13 +117,11 @@ public class PomParser {
 
                 if (node.getNodeType()
                         != Node.ELEMENT_NODE
-                        || !node.getNodeName()
-                                .equals("dependency")) {
+                        || !"dependency".equals(
+                                node.getNodeName())) {
 
                     continue;
                 }
-
-                dependencyCount++;
 
                 Element element =
                         (Element) node;
@@ -218,7 +181,10 @@ public class PomParser {
                                     version,
                                     scope);
 
-                    dependencies.add(dependency);
+                    dependencies.add(
+                            dependency);
+
+                    dependencyCount++;
 
                 } else {
 
@@ -244,25 +210,150 @@ public class PomParser {
         return dependencies;
     }
 
+    private void loadParentConfiguration(
+            File childPom,
+            Document childDocument,
+            Map<String, String> properties,
+            Map<String, String> managedVersions) {
+
+        try {
+
+            Element project =
+                    childDocument
+                            .getDocumentElement();
+
+            Element parent =
+                    getDirectChild(
+                            project,
+                            "parent");
+
+            if (parent == null) {
+                return;
+            }
+
+            String relativePath =
+                    getDirectTagValue(
+                            parent,
+                            "relativePath");
+
+            if (relativePath == null
+                    || relativePath.isEmpty()) {
+
+                relativePath =
+                        "../pom.xml";
+            }
+
+            File parentPom =
+                    new File(
+                            childPom
+                                    .getParentFile(),
+                            relativePath)
+                            .getCanonicalFile();
+
+            if (!parentPom.exists()) {
+
+                return;
+            }
+
+            Document parentDocument =
+                    readDocument(
+                            parentPom);
+
+            loadParentConfiguration(
+                    parentPom,
+                    parentDocument,
+                    properties,
+                    managedVersions);
+
+            properties.putAll(
+                    readProperties(
+                            parentDocument));
+
+            managedVersions.putAll(
+                    readDependencyManagement(
+                            parentDocument,
+                            properties));
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "AVISO: No se pudo leer el POM padre: "
+                    + e.getMessage());
+        }
+    }
+
+    private Document readDocument(
+            File pomFile)
+            throws Exception {
+
+        DocumentBuilderFactory factory =
+                DocumentBuilderFactory
+                        .newInstance();
+
+        factory.setFeature(
+                "http://apache.org/xml/features/disallow-doctype-decl",
+                true);
+
+        factory.setFeature(
+                "http://xml.org/sax/features/external-general-entities",
+                false);
+
+        factory.setFeature(
+                "http://xml.org/sax/features/external-parameter-entities",
+                false);
+
+        factory.setFeature(
+                "http://apache.org/xml/features/nonvalidating/load-external-dtd",
+                false);
+
+        factory.setXIncludeAware(false);
+
+        factory.setExpandEntityReferences(false);
+
+        factory.setAttribute(
+                XMLConstants.ACCESS_EXTERNAL_DTD,
+                "");
+
+        factory.setAttribute(
+                XMLConstants.ACCESS_EXTERNAL_SCHEMA,
+                "");
+
+        DocumentBuilder builder =
+                factory.newDocumentBuilder();
+
+        Document document =
+                builder.parse(
+                        pomFile);
+
+        document
+                .getDocumentElement()
+                .normalize();
+
+        return document;
+    }
+
     private Map<String, String> readProperties(
             Document document) {
 
         Map<String, String> properties =
                 new HashMap<>();
 
-        NodeList propertiesNodes =
-                document.getElementsByTagName(
+        Element project =
+                document
+                        .getDocumentElement();
+
+        Element propertiesElement =
+                getDirectChild(
+                        project,
                         "properties");
 
-        if (propertiesNodes.getLength() == 0) {
+        if (propertiesElement == null) {
             return properties;
         }
 
-        Node propertiesNode =
-                propertiesNodes.item(0);
-
         NodeList children =
-                propertiesNode.getChildNodes();
+                propertiesElement
+                        .getChildNodes();
 
         for (int i = 0;
                 i < children.getLength();
@@ -276,42 +367,65 @@ public class PomParser {
 
                 properties.put(
                         child.getNodeName(),
-                        child.getTextContent().trim());
+                        child.getTextContent()
+                                .trim());
             }
         }
 
         return properties;
     }
 
-    private Map<String, String> readDependencyManagement(
-            Document document,
-            Map<String, String> properties) {
+    private Map<String, String>
+            readDependencyManagement(
+                    Document document,
+                    Map<String, String> properties) {
 
         Map<String, String> managedVersions =
                 new HashMap<>();
 
-        NodeList managementNodes =
-                document.getElementsByTagName(
+        Element project =
+                document
+                        .getDocumentElement();
+
+        Element dependencyManagement =
+                getDirectChild(
+                        project,
                         "dependencyManagement");
 
-        if (managementNodes.getLength() == 0) {
+        if (dependencyManagement == null) {
             return managedVersions;
         }
 
-        Element dependencyManagement =
-                (Element) managementNodes.item(0);
+        Element dependencies =
+                getDirectChild(
+                        dependencyManagement,
+                        "dependencies");
+
+        if (dependencies == null) {
+            return managedVersions;
+        }
 
         NodeList dependencyNodes =
-                dependencyManagement
-                        .getElementsByTagName(
-                                "dependency");
+                dependencies
+                        .getChildNodes();
 
         for (int i = 0;
                 i < dependencyNodes.getLength();
                 i++) {
 
+            Node node =
+                    dependencyNodes.item(i);
+
+            if (node.getNodeType()
+                    != Node.ELEMENT_NODE
+                    || !"dependency".equals(
+                            node.getNodeName())) {
+
+                continue;
+            }
+
             Element dependency =
-                    (Element) dependencyNodes.item(i);
+                    (Element) node;
 
             String groupId =
                     getDirectTagValue(
@@ -359,7 +473,8 @@ public class PomParser {
             return null;
         }
 
-        value = value.trim();
+        value =
+                value.trim();
 
         if (value.startsWith("${")
                 && value.endsWith("}")) {
@@ -370,9 +485,11 @@ public class PomParser {
                             value.length() - 1);
 
             String resolvedValue =
-                    properties.get(propertyName);
+                    properties.get(
+                            propertyName);
 
             if (resolvedValue != null) {
+
                 return resolvedValue;
             }
         }
@@ -380,12 +497,12 @@ public class PomParser {
         return value;
     }
 
-    private String getDirectTagValue(
-            Element element,
+    private Element getDirectChild(
+            Element parent,
             String tagName) {
 
         NodeList children =
-                element.getChildNodes();
+                parent.getChildNodes();
 
         for (int i = 0;
                 i < children.getLength();
@@ -396,15 +513,31 @@ public class PomParser {
 
             if (child.getNodeType()
                     == Node.ELEMENT_NODE
-                    && child.getNodeName()
-                            .equals(tagName)) {
+                    && tagName.equals(
+                            child.getNodeName())) {
 
-                return child
-                        .getTextContent()
-                        .trim();
+                return (Element) child;
             }
         }
 
         return null;
+    }
+
+    private String getDirectTagValue(
+            Element element,
+            String tagName) {
+
+        Element child =
+                getDirectChild(
+                        element,
+                        tagName);
+
+        if (child == null) {
+            return null;
+        }
+
+        return child
+                .getTextContent()
+                .trim();
     }
 }
