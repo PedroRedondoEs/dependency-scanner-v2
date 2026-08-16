@@ -7,6 +7,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -19,7 +21,27 @@ public class VersionChecker {
     private static final String MAVEN_SEARCH_URL =
             "https://search.maven.org/solrsearch/select";
 
-    public String getLatestVersion(Dependency dependency) {
+    private static final Logger LOGGER =
+            Logger.getLogger(
+                    VersionChecker.class.getName());
+
+    private static final Duration CONNECT_TIMEOUT =
+            Duration.ofSeconds(5);
+
+    private static final Duration REQUEST_TIMEOUT =
+            Duration.ofSeconds(8);
+
+    private final HttpClient client;
+
+    public VersionChecker() {
+
+        client = HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .build();
+    }
+
+    public String getLatestVersion(
+            Dependency dependency) {
 
         try {
 
@@ -41,17 +63,10 @@ public class VersionChecker {
                     + encodedQuery
                     + "&rows=1&wt=json";
 
-            HttpClient client =
-                    HttpClient.newBuilder()
-                            .connectTimeout(
-                                    Duration.ofSeconds(5))
-                            .build();
-
             HttpRequest request =
                     HttpRequest.newBuilder()
                             .uri(URI.create(url))
-                            .timeout(
-                                    Duration.ofSeconds(8))
+                            .timeout(REQUEST_TIMEOUT)
                             .GET()
                             .build();
 
@@ -62,8 +77,8 @@ public class VersionChecker {
 
             if (response.statusCode() != 200) {
 
-                System.out.println(
-                        "ERROR consultando Maven Central: "
+                LOGGER.warning(
+                        "Maven Central devolvio codigo HTTP "
                         + response.statusCode());
 
                 return null;
@@ -78,6 +93,10 @@ public class VersionChecker {
                     root.getAsJsonObject("response");
 
             if (responseObject == null) {
+
+                LOGGER.warning(
+                        "Respuesta de Maven Central sin objeto response");
+
                 return null;
             }
 
@@ -85,6 +104,13 @@ public class VersionChecker {
                     responseObject.getAsJsonArray("docs");
 
             if (docs == null || docs.size() == 0) {
+
+                LOGGER.info(
+                        "No se encontro la dependencia en Maven Central: "
+                        + dependency.getGroupId()
+                        + ":"
+                        + dependency.getArtifactId());
+
                 return null;
             }
 
@@ -92,6 +118,13 @@ public class VersionChecker {
                     docs.get(0).getAsJsonObject();
 
             if (!artifact.has("latestVersion")) {
+
+                LOGGER.warning(
+                        "Maven Central no devolvio latestVersion para "
+                        + dependency.getGroupId()
+                        + ":"
+                        + dependency.getArtifactId());
+
                 return null;
             }
 
@@ -101,16 +134,29 @@ public class VersionChecker {
 
         } catch (java.net.http.HttpTimeoutException e) {
 
-            System.out.println(
-                    "AVISO: Maven Central ha tardado demasiado en responder.");
+            LOGGER.warning(
+                    "Maven Central ha tardado demasiado en responder");
+
+            return null;
+
+        } catch (InterruptedException e) {
+
+            Thread.currentThread()
+                    .interrupt();
+
+            LOGGER.log(
+                    Level.WARNING,
+                    "Consulta a Maven Central interrumpida",
+                    e);
 
             return null;
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "ERROR comprobando version: "
-                    + e.getMessage());
+            LOGGER.log(
+                    Level.WARNING,
+                    "Error comprobando version",
+                    e);
 
             return null;
         }

@@ -5,6 +5,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.google.gson.JsonObject;
 
@@ -15,12 +17,19 @@ public class OsvClient {
     private static final String OSV_URL =
             "https://api.osv.dev/v1/query";
 
+    private static final Logger LOGGER =
+            Logger.getLogger(
+                    OsvClient.class.getName());
+
+    private static final Duration TIMEOUT =
+            Duration.ofSeconds(10);
+
     private final HttpClient client;
 
     public OsvClient() {
 
         client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
+                .connectTimeout(TIMEOUT)
                 .build();
     }
 
@@ -45,43 +54,47 @@ public class OsvClient {
                     "ecosystem",
                     "Maven");
 
-            JsonObject requestBody =
+            JsonObject jsonBody =
                     new JsonObject();
 
-            requestBody.addProperty(
+            jsonBody.addProperty(
                     "version",
                     dependency.getVersion());
 
-            requestBody.add(
+            jsonBody.add(
                     "package",
                     packageObject);
 
             HttpRequest request =
                     HttpRequest.newBuilder()
-                            .uri(URI.create(OSV_URL))
-                            .timeout(Duration.ofSeconds(10))
+                            .uri(
+                                    URI.create(
+                                            OSV_URL))
+                            .timeout(TIMEOUT)
                             .header(
                                     "Content-Type",
                                     "application/json")
                             .POST(
                                     HttpRequest.BodyPublishers
                                             .ofString(
-                                                    requestBody.toString()))
+                                                    jsonBody.toString()))
                             .build();
 
             HttpResponse<String> response =
                     client.send(
                             request,
-                            HttpResponse.BodyHandlers.ofString());
+                            HttpResponse.BodyHandlers
+                                    .ofString());
 
             System.out.println(
                     "Código HTTP OSV: "
                     + response.statusCode());
 
-            if (response.statusCode() != 200) {
+            if (response.statusCode() < 200
+                    || response.statusCode() >= 300) {
 
-                System.out.println(
-                        "ERROR: OSV respondió con código "
+                LOGGER.warning(
+                        "OSV devolvio codigo HTTP "
                         + response.statusCode());
 
                 return null;
@@ -89,18 +102,24 @@ public class OsvClient {
 
             return response.body();
 
-        } catch (java.net.http.HttpTimeoutException e) {
+        } catch (InterruptedException e) {
 
-            System.out.println(
-                    "AVISO: OSV ha tardado demasiado en responder.");
+            Thread.currentThread()
+                    .interrupt();
+
+            LOGGER.log(
+                    Level.WARNING,
+                    "Consulta a OSV interrumpida",
+                    e);
 
             return null;
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "ERROR consultando OSV: "
-                    + e.getMessage());
+            LOGGER.log(
+                    Level.WARNING,
+                    "Error consultando OSV",
+                    e);
 
             return null;
         }
